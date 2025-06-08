@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy": "vite build && gh-pages -d dist",
+    "deploy": "vite build && gh-pages -d dist -r https://github.com/ART3RY-G1N/schedule-builder.git",
     "lint": "eslint .",
     "preview": "vite preview",
     "format": "prettier --write ."
