@@ -195,7 +195,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       totalScheduledTime += calculateDuration(slot.startTime, slot.endTime);
     }
 
-    const totalAvailableTime = 16 * 60;
+    const totalAvailableTime = 24 * 60;
     const utilization =
       totalScheduledTime > 0
         ? Math.min(100, (totalScheduledTime / totalAvailableTime) * 100)
