@@ -95,7 +95,10 @@ const Dashboard: React.FC = () => {
           </div>
 
           {showCreateForm ? (
-            <CreateScheduleForm onSubmit={handleCreateSchedule} />
+            <CreateScheduleForm 
+              onSubmit={handleCreateSchedule}
+              onCancel={() => setShowCreateForm(false)} 
+            />
           ) : (
             <ScheduleList
               schedules={schedules}

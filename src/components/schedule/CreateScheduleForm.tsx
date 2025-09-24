@@ -12,10 +12,12 @@ import {
 
 interface CreateScheduleFormProps {
   onSubmit: (name: string) => void;
+  onCancel: () => void;
 }
 
 const CreateScheduleForm: React.FC<CreateScheduleFormProps> = ({
   onSubmit,
+  onCancel,
 }) => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -30,6 +32,12 @@ const CreateScheduleForm: React.FC<CreateScheduleFormProps> = ({
 
     onSubmit(name.trim());
   };
+
+  const handleCancel = () => {
+    setName('');
+    setError('');
+    onCancel();
+  }
 
   return (
     <Card className="w-full max-w-md mx-auto animate-slide-up">
@@ -54,6 +62,9 @@ const CreateScheduleForm: React.FC<CreateScheduleFormProps> = ({
           />
         </CardContent>
         <CardFooter className="flex justify-end space-x-3">
+          <Button type="button" variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
           <Button type="submit" disabled={!name.trim()}>
             Create Schedule
           </Button>
