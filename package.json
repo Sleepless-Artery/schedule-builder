@@ -3,11 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "homepage": "https://ART3RY-G1N.github.io/schedule-builder",
+  "homepage": "https://sleepless-artery.github.io/schedule-builder",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy": "vite build && gh-pages -d dist -r https://github.com/ART3RY-G1N/schedule-builder.git",
+    "deploy": "vite build && gh-pages -d dist -r https://github.com/Sleepless-Artery/schedule-builder.git",
     "lint": "eslint .",
     "preview": "vite preview",
     "format": "prettier --write ."
