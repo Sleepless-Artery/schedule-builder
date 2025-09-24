@@ -25,6 +25,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
   const handleUpdateTimeSlot = (updatedTimeSlot: Omit<TimeSlot, 'id'>) => {
     if (editingTimeSlot) {
       updateTimeSlot(editingTimeSlot.id, updatedTimeSlot);
+      setShowForm(false);
       setEditingTimeSlot(null);
     }
   };
