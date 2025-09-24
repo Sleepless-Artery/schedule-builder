@@ -109,7 +109,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
           {sortedTimeSlots.length === 0 ? (
             <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md p-8 text-center">
               <p className="text-gray-500 dark:text-gray-400">
-                No time slots added yet. Click the "Add Time Slot\" button to
+                No time slots added yet. Click the "Add Time Slot" button to
                 get started.
               </p>
             </div>
