@@ -32,13 +32,67 @@ interface ScheduleState {
   setSelectedDate: (date: Date) => void;
 
   analyzeCurrentSchedule: () => ScheduleAnalysis | null;
+  
+  // Новые методы для работы с localStorage
+  loadFromLocalStorage: () => void;
+  clearLocalStorage: () => void;
 }
+
+// Ключ для localStorage
+const LOCAL_STORAGE_KEY = 'schedule-builder-data';
+
+// Функция для загрузки из localStorage
+const loadSchedulesFromLocalStorage = (): Schedule[] => {
+  try {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      
+      // Валидация и преобразование дат
+      return data.map((schedule: any) => ({
+        ...schedule,
+        createdAt: schedule.createdAt || new Date().toISOString(),
+        updatedAt: schedule.updatedAt || new Date().toISOString(),
+        timeSlots: schedule.timeSlots || [],
+      }));
+    }
+  } catch (error) {
+    console.error('Error loading from localStorage:', error);
+  }
+  return [];
+};
+
+// Функция для сохранения в localStorage
+const saveSchedulesToLocalStorage = (schedules: Schedule[]) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(schedules));
+  } catch (error) {
+    console.error('Error saving to localStorage:', error);
+  }
+};
 
 export const useScheduleStore = create<ScheduleState>((set, get) => ({
   schedules: [],
   currentSchedule: null,
   currentView: ViewType.WEEK,
   selectedDate: new Date(),
+
+  // Загрузка данных при инициализации store
+  loadFromLocalStorage: () => {
+    const schedules = loadSchedulesFromLocalStorage();
+    set({
+      schedules,
+      currentSchedule: schedules.length > 0 ? schedules[0] : null,
+    });
+  },
+
+  clearLocalStorage: () => {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    set({
+      schedules: [],
+      currentSchedule: null,
+    });
+  },
 
   createSchedule: (name: string) => {
     const newSchedule: Schedule = {
@@ -49,15 +103,20 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
 
-    set((state) => ({
-      schedules: [...state.schedules, newSchedule],
-      currentSchedule: newSchedule,
-    }));
+    set((state) => {
+      const newSchedules = [...state.schedules, newSchedule];
+      // Сохраняем в localStorage после обновления состояния
+      saveSchedulesToLocalStorage(newSchedules);
+      return {
+        schedules: newSchedules,
+        currentSchedule: newSchedule,
+      };
+    });
   },
 
   updateSchedule: (id: string, updates: Partial<Omit<Schedule, 'id'>>) => {
-    set((state) => ({
-      schedules: state.schedules.map((schedule) =>
+    set((state) => {
+      const newSchedules = state.schedules.map((schedule) =>
         schedule.id === id
           ? {
               ...schedule,
@@ -65,16 +124,25 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
               updatedAt: new Date().toISOString(),
             }
           : schedule,
-      ),
-      currentSchedule:
+      );
+
+      const newCurrentSchedule =
         state.currentSchedule?.id === id
           ? {
               ...state.currentSchedule,
               ...updates,
               updatedAt: new Date().toISOString(),
             }
-          : state.currentSchedule,
-    }));
+          : state.currentSchedule;
+
+      // Сохраняем в localStorage после обновления состояния
+      saveSchedulesToLocalStorage(newSchedules);
+
+      return {
+        schedules: newSchedules,
+        currentSchedule: newCurrentSchedule,
+      };
+    });
   },
 
   deleteSchedule: (id: string) => {
@@ -87,6 +155,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       if (state.currentSchedule?.id === id) {
         newCurrentSchedule = newSchedules.length > 0 ? newSchedules[0] : null;
       }
+
+      // Сохраняем в localStorage после обновления состояния
+      saveSchedulesToLocalStorage(newSchedules);
 
       return {
         schedules: newSchedules,
@@ -117,10 +188,15 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         updatedAt: new Date().toISOString(),
       };
 
+      const newSchedules = state.schedules.map((schedule) =>
+        schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
+      );
+
+      // Сохраняем в localStorage после обновления состояния
+      saveSchedulesToLocalStorage(newSchedules);
+
       return {
-        schedules: state.schedules.map((schedule) =>
-          schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
-        ),
+        schedules: newSchedules,
         currentSchedule: updatedSchedule,
       };
     });
@@ -140,10 +216,15 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         updatedAt: new Date().toISOString(),
       };
 
+      const newSchedules = state.schedules.map((schedule) =>
+        schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
+      );
+
+      // Сохраняем в localStorage после обновления состояния
+      saveSchedulesToLocalStorage(newSchedules);
+
       return {
-        schedules: state.schedules.map((schedule) =>
-          schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
-        ),
+        schedules: newSchedules,
         currentSchedule: updatedSchedule,
       };
     });
@@ -163,10 +244,15 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         updatedAt: new Date().toISOString(),
       };
 
+      const newSchedules = state.schedules.map((schedule) =>
+        schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
+      );
+
+      // Сохраняем в localStorage после обновления состояния
+      saveSchedulesToLocalStorage(newSchedules);
+
       return {
-        schedules: state.schedules.map((schedule) =>
-          schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
-        ),
+        schedules: newSchedules,
         currentSchedule: updatedSchedule,
       };
     });
