@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Plus, Edit3, Trash2, MoreVertical } from 'lucide-react';
-import { Schedule } from '../../types';
+import { startOfWeek, endOfWeek } from 'date-fns';
+import { Schedule, ViewType } from '../../types';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 
@@ -40,6 +41,36 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
       onDeleteSchedule(scheduleId);
     }
     setMenuOpen(null);
+  };
+
+  const getSchedulePeriodText = (schedule: Schedule) => {
+    const date = new Date(schedule.targetDate);
+    switch (schedule.viewType) {
+      case ViewType.DAY:
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+      case ViewType.WEEK:
+        const weekStart = startOfWeek(date, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(date, { weekStartsOn: 1 });
+        return `${weekStart.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        })} - ${weekEnd.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: weekStart.getFullYear() !== weekEnd.getFullYear() ? 'numeric' : undefined
+        })}`;
+      case ViewType.MONTH:
+        return date.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric'
+        });
+      default:
+        return '';
+    }
   };
 
   return (
@@ -84,7 +115,10 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
                       {schedule.name}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {schedule.timeSlots.length} time slots
+                      {schedule.timeSlots.length} time slots • {schedule.viewType.toLowerCase()} schedule
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      {getSchedulePeriodText(schedule)}
                     </p>
                   </div>
                   <div className="flex items-center space-x-2 ml-2">

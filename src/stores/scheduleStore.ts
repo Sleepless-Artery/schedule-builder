@@ -12,6 +12,8 @@ import {
   sortTimeSlots,
   calculateDuration,
 } from '../utils/time-utils';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
+
 
 interface ScheduleState {
   schedules: Schedule[];
@@ -19,7 +21,7 @@ interface ScheduleState {
   currentView: ViewType;
   selectedDate: Date;
 
-  createSchedule: (name: string) => void;
+  createSchedule: (name: string, viewType?: ViewType, targetDate?: Date) => void;
   updateSchedule: (id: string, updates: Partial<Omit<Schedule, 'id'>>) => void;
   deleteSchedule: (id: string) => void;
   setCurrentSchedule: (id: string) => void;
@@ -33,27 +35,25 @@ interface ScheduleState {
 
   analyzeCurrentSchedule: () => ScheduleAnalysis | null;
   
-  // Новые методы для работы с localStorage
   loadFromLocalStorage: () => void;
   clearLocalStorage: () => void;
 }
 
-// Ключ для localStorage
 const LOCAL_STORAGE_KEY = 'schedule-builder-data';
 
-// Функция для загрузки из localStorage
 const loadSchedulesFromLocalStorage = (): Schedule[] => {
   try {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (stored) {
       const data = JSON.parse(stored);
       
-      // Валидация и преобразование дат
       return data.map((schedule: any) => ({
         ...schedule,
         createdAt: schedule.createdAt || new Date().toISOString(),
         updatedAt: schedule.updatedAt || new Date().toISOString(),
         timeSlots: schedule.timeSlots || [],
+        viewType: schedule.viewType || ViewType.DAY,
+        targetDate: schedule.targetDate || new Date().toISOString().split('T')[0],
       }));
     }
   } catch (error) {
@@ -62,7 +62,6 @@ const loadSchedulesFromLocalStorage = (): Schedule[] => {
   return [];
 };
 
-// Функция для сохранения в localStorage
 const saveSchedulesToLocalStorage = (schedules: Schedule[]) => {
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(schedules));
@@ -77,7 +76,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   currentView: ViewType.WEEK,
   selectedDate: new Date(),
 
-  // Загрузка данных при инициализации store
   loadFromLocalStorage: () => {
     const schedules = loadSchedulesFromLocalStorage();
     set({
@@ -94,22 +92,38 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     });
   },
 
-  createSchedule: (name: string) => {
+  createSchedule: (name: string, viewType?: ViewType, targetDate?: Date) => {
+    const state = get();
+    const currentView = viewType || state.currentView;
+    const currentDate = targetDate || state.selectedDate;
+    
+    let scheduleTargetDate = currentDate.toISOString().split('T')[0];
+
+    if (currentView === ViewType.WEEK) {
+
+      scheduleTargetDate = currentDate.toISOString().split('T')[0];
+    } else if (currentView === ViewType.MONTH) {
+      scheduleTargetDate = currentDate.toISOString().split('T')[0];
+    }
+
     const newSchedule: Schedule = {
       id: `schedule-${Date.now()}`,
       name,
       timeSlots: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      viewType: currentView,
+      targetDate: scheduleTargetDate,
     };
 
     set((state) => {
       const newSchedules = [...state.schedules, newSchedule];
-      // Сохраняем в localStorage после обновления состояния
       saveSchedulesToLocalStorage(newSchedules);
       return {
         schedules: newSchedules,
         currentSchedule: newSchedule,
+        currentView: currentView,
+        selectedDate: currentDate,
       };
     });
   },
@@ -135,7 +149,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             }
           : state.currentSchedule;
 
-      // Сохраняем в localStorage после обновления состояния
       saveSchedulesToLocalStorage(newSchedules);
 
       return {
@@ -156,7 +169,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         newCurrentSchedule = newSchedules.length > 0 ? newSchedules[0] : null;
       }
 
-      // Сохраняем в localStorage после обновления состояния
       saveSchedulesToLocalStorage(newSchedules);
 
       return {
@@ -167,10 +179,21 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   },
 
   setCurrentSchedule: (id: string) => {
-    set((state) => ({
-      currentSchedule:
-        state.schedules.find((schedule) => schedule.id === id) || null,
-    }));
+    set((state) => {
+      const schedule = state.schedules.find((schedule) => schedule.id === id);
+      if (schedule) {
+        const targetDate = new Date(schedule.targetDate);
+
+        return {
+          currentSchedule: schedule,
+          currentView: schedule.viewType,
+          selectedDate: targetDate,
+        };
+      }
+      return {
+        currentSchedule: null,
+      };
+    });
   },
 
   addTimeSlot: (timeSlot: Omit<TimeSlot, 'id'>) => {
@@ -192,7 +215,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
       );
 
-      // Сохраняем в localStorage после обновления состояния
       saveSchedulesToLocalStorage(newSchedules);
 
       return {
@@ -220,7 +242,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
       );
 
-      // Сохраняем в localStorage после обновления состояния
       saveSchedulesToLocalStorage(newSchedules);
 
       return {
@@ -248,7 +269,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         schedule.id === updatedSchedule.id ? updatedSchedule : schedule,
       );
 
-      // Сохраняем в localStorage после обновления состояния
       saveSchedulesToLocalStorage(newSchedules);
 
       return {
@@ -267,7 +287,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   },
 
   analyzeCurrentSchedule: () => {
-    const { currentSchedule } = get();
+    const { currentSchedule, currentView, selectedDate } = get();
 
     if (!currentSchedule) return null;
 
@@ -277,13 +297,56 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     const gaps = findGaps(sortedTimeSlots);
 
     let totalScheduledTime = 0;
-    for (const slot of currentSchedule.timeSlots) {
-      totalScheduledTime += calculateDuration(slot.startTime, slot.endTime);
+    let totalAvailableTime = 0;
+
+    switch (currentView) {
+      case ViewType.DAY:
+        totalAvailableTime = 24 * 60;
+        for (const slot of currentSchedule.timeSlots) {
+          const slotDate = new Date(slot.date).toISOString().split('T')[0];
+          const selectedDateStr = selectedDate.toISOString().split('T')[0];
+          if (slotDate === selectedDateStr) {
+            totalScheduledTime += calculateDuration(slot.startTime, slot.endTime);
+          }
+        }
+        break;
+
+      case ViewType.WEEK:
+        totalAvailableTime = 7 * 24 * 60;
+        for (const slot of currentSchedule.timeSlots) {
+          const slotDate = new Date(slot.date);
+          const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+          const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+          
+          if (slotDate >= weekStart && slotDate <= weekEnd) {
+            totalScheduledTime += calculateDuration(slot.startTime, slot.endTime);
+          }
+        }
+        break;
+
+      case ViewType.MONTH:
+        const monthStart = startOfMonth(selectedDate);
+        const monthEnd = endOfMonth(selectedDate);
+        const daysInMonth = differenceInDays(monthEnd, monthStart) + 1;
+        totalAvailableTime = daysInMonth * 24 * 60;
+        
+        for (const slot of currentSchedule.timeSlots) {
+          const slotDate = new Date(slot.date);
+          if (slotDate >= monthStart && slotDate <= monthEnd) {
+            totalScheduledTime += calculateDuration(slot.startTime, slot.endTime);
+          }
+        }
+        break;
+
+      default:
+        totalAvailableTime = 24 * 60;
+        for (const slot of currentSchedule.timeSlots) {
+          totalScheduledTime += calculateDuration(slot.startTime, slot.endTime);
+        }
     }
 
-    const totalAvailableTime = 24 * 60;
     const utilization =
-      totalScheduledTime > 0
+      totalScheduledTime > 0 && totalAvailableTime > 0
         ? Math.min(100, (totalScheduledTime / totalAvailableTime) * 100)
         : 0;
 
@@ -304,26 +367,23 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         affectedSlots: [conflict.slotA, conflict.slotB],
       })),
 
-      ...(currentSchedule.timeSlots.length > 10
+      ...(utilization > 80
         ? [
             {
-              id: 'suggestion-too-many',
+              id: 'suggestion-high-utilization',
               type: SuggestionType.OPTIMIZE_TIME,
-              description:
-                'Your schedule may be too packed. Consider consolidating similar activities.',
+              description: 'Your schedule utilization is high. Consider adding breaks or reducing workload.',
               affectedSlots: [],
             },
           ]
         : []),
 
-      ...(currentSchedule.timeSlots.length < 3 &&
-      currentSchedule.timeSlots.length > 0
+      ...(utilization < 20 && currentSchedule.timeSlots.length > 0
         ? [
             {
-              id: 'suggestion-too-few',
+              id: 'suggestion-low-utilization',
               type: SuggestionType.OPTIMIZE_TIME,
-              description:
-                'You have plenty of free time. Maybe it\'s time to fill it with something?',
+              description: 'Your schedule has low utilization. Consider adding more activities.',
               affectedSlots: [],
             },
           ]
@@ -332,9 +392,14 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 
     return {
       conflicts,
-      utilization,
+      utilization: Math.round(utilization * 10) / 10,
       gaps,
       suggestions,
+      _debug: {
+        totalScheduledMinutes: totalScheduledTime,
+        totalAvailableMinutes: totalAvailableTime,
+        view: currentView,
+      },
     };
   },
 }));

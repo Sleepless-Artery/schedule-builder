@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleCreateSchedule = (name: string) => {
-    createSchedule(name);
+    createSchedule(name, currentView, selectedDate);
     setShowCreateForm(false);
   };
 

@@ -179,3 +179,14 @@ export const sortTimeSlots = (timeSlots: TimeSlot[]): TimeSlot[] => {
     return startA.getTime() - startB.getTime();
   });
 };
+
+export const filterTimeSlotsByDateRange = (
+  timeSlots: TimeSlot[],
+  startDate: Date,
+  endDate: Date
+): TimeSlot[] => {
+  return timeSlots.filter(slot => {
+    const slotDate = new Date(slot.date);
+    return slotDate >= startDate && slotDate <= endDate;
+  });
+};

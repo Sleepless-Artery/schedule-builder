@@ -18,6 +18,8 @@ export type Schedule = {
   timeSlots: TimeSlot[];
   createdAt: string;
   updatedAt: string;
+  viewType: ViewType;
+  targetDate: string;
 };
 
 export type ScheduleAnalysis = {
@@ -25,6 +27,11 @@ export type ScheduleAnalysis = {
   utilization: number;
   gaps: TimeGap[];
   suggestions: Suggestion[];
+  _debug?: {
+    totalScheduledMinutes: number;
+    totalAvailableMinutes: number;
+    view: ViewType;
+  };
 };
 
 export type ScheduleConflict = {
