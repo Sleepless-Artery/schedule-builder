@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, MapPin, Calendar } from 'lucide-react';
+import { Clock, MapPin, Calendar, Lock, AlertCircle } from 'lucide-react';
 import { TimeSlot, Category, Priority } from '../../types';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
@@ -17,7 +17,11 @@ interface TimeSlotFormProps {
   timeSlot?: TimeSlot;
   onSubmit: (timeSlot: Omit<TimeSlot, 'id'>) => void;
   onCancel: () => void;
-  defaultDate?: string; // НОВЫЙ ПРОПС: дата по умолчанию
+  defaultDate?: string;
+  availableDates?: string[];
+  forceDate?: boolean;
+  minDate?: string; // НОВЫЙ ПРОПС: минимальная доступная дата
+  maxDate?: string; // НОВЫЙ ПРОПС: максимальная доступная дата
 }
 
 const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
@@ -25,11 +29,17 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
   onSubmit,
   onCancel,
   defaultDate,
+  availableDates = [],
+  forceDate = false,
+  minDate,
+  maxDate,
 }) => {
   const [title, setTitle] = useState(timeSlot?.title || '');
   const [startTime, setStartTime] = useState(timeSlot?.startTime || '09:00');
   const [endTime, setEndTime] = useState(timeSlot?.endTime || '10:00');
-  const [date, setDate] = useState(timeSlot?.date || defaultDate || new Date().toISOString().split('T')[0]); // НОВОЕ СОСТОЯНИЕ
+  const [date, setDate] = useState(
+    timeSlot?.date || defaultDate || new Date().toISOString().split('T')[0]
+  );
   const [category, setCategory] = useState<Category>(
     timeSlot?.category || Category.WORK,
   );
@@ -82,8 +92,26 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
       }
     }
 
+    // ПРОВЕРКА ДАТЫ НА СООТВЕТСТВИЕ ПЕРИОДУ
+    if (minDate && maxDate && (date < minDate || date > maxDate)) {
+      newErrors.date = `Date must be between ${formatDisplayDate(minDate)} and ${formatDisplayDate(maxDate)}`;
+    }
+
+    // Дополнительная проверка по availableDates
+    if (availableDates.length > 0 && !availableDates.includes(date)) {
+      newErrors.date = 'Selected date is not available in current view';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Функция для форматирования даты для отображения
+  const formatDisplayDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,7 +125,7 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
       title,
       startTime,
       endTime,
-      date, // ДОБАВЛЕНО ПОЛЕ ДАТЫ
+      date,
       category,
       description: description.trim() || undefined,
       location: location.trim() || undefined,
@@ -125,16 +153,51 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
             required
           />
 
-          {/* НОВОЕ ПОЛЕ: Дата */}
-          <Input
-            type="date"
-            label="Date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            icon={<Calendar className="h-4 w-4 text-gray-500" />}
-            error={errors.date}
-            required
-          />
+          {/* ОБНОВЛЕННОЕ ПОЛЕ: Дата с полными ограничениями */}
+          <div className="space-y-2">
+            <label
+              htmlFor="date"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Date 
+              {forceDate && <span className="text-xs text-gray-500 ml-1">(Fixed for current day)</span>}
+              {minDate && maxDate && !forceDate && (
+                <span className="text-xs text-gray-500 ml-1">
+                  ({formatDisplayDate(minDate)} - {formatDisplayDate(maxDate)})
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <Input
+                type="date"
+                id="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                icon={forceDate ? <Lock className="h-4 w-4 text-gray-500" /> : <Calendar className="h-4 w-4 text-gray-500" />}
+                error={errors.date}
+                required
+                disabled={forceDate}
+                // ОГРАНИЧЕНИЯ ЧЕРЕЗ MIN/MAX АТРИБУТЫ
+                min={minDate}
+                max={maxDate}
+              />
+              {forceDate && (
+                <div className="absolute inset-y-0 right-8 flex items-center">
+                  <Lock className="h-4 w-4 text-gray-400" />
+                </div>
+              )}
+              {minDate && maxDate && !forceDate && (
+                <div className="absolute inset-y-0 right-8 flex items-center">
+                  <AlertCircle className="h-4 w-4 text-gray-400" />
+                </div>
+              )}
+            </div>
+            {minDate && maxDate && !forceDate && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Available period: {formatDisplayDate(minDate)} - {formatDisplayDate(maxDate)}
+              </p>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Input

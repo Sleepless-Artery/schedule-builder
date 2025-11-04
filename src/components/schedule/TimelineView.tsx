@@ -5,6 +5,8 @@ import Button from '../ui/Button';
 import TimeSlotCard from './TimeSlotCard';
 import TimeSlotForm from './TimeSlotForm';
 import { useScheduleStore } from '../../stores/scheduleStore';
+import { ViewType } from '../../types';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 
 interface TimelineViewProps {
   schedule: Schedule;
@@ -15,7 +17,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingTimeSlot, setEditingTimeSlot] = useState<TimeSlot | null>(null);
 
-  const { addTimeSlot, updateTimeSlot, deleteTimeSlot, selectedDate } = useScheduleStore();
+  const { addTimeSlot, updateTimeSlot, deleteTimeSlot, selectedDate, currentView } = useScheduleStore();
 
   const handleAddTimeSlot = (newTimeSlot: Omit<TimeSlot, 'id'>) => {
     addTimeSlot(newTimeSlot);
@@ -52,11 +54,71 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
   const sortedTimeSlots = [...schedule.timeSlots].sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date);
     if (dateComparison !== 0) return dateComparison;
-    
     return a.startTime.localeCompare(b.startTime);
   });
 
-  const currentDate = selectedDate.toISOString().split('T')[0];
+  // ОБНОВЛЕННАЯ ФУНКЦИЯ: возвращает min и max даты для ограничений
+  const getDateConstraints = (): { minDate: string; maxDate: string; availableDates: string[] } => {
+    switch (currentView) {
+      case ViewType.DAY:
+        const dayDate = selectedDate.toISOString().split('T')[0];
+        return {
+          minDate: dayDate,
+          maxDate: dayDate,
+          availableDates: [dayDate]
+        };
+      
+      case ViewType.WEEK:
+        const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+        const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+        const weekDates = weekDays.map(day => day.toISOString().split('T')[0]);
+        return {
+          minDate: weekDates[0],
+          maxDate: weekDates[weekDates.length - 1],
+          availableDates: weekDates
+        };
+      
+      case ViewType.MONTH:
+        const monthStart = startOfMonth(selectedDate);
+        const monthEnd = endOfMonth(selectedDate);
+        const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+        const monthDates = monthDays.map(day => day.toISOString().split('T')[0]);
+        return {
+          minDate: monthDates[0],
+          maxDate: monthDates[monthDates.length - 1],
+          availableDates: monthDates
+        };
+      
+      default:
+        // Для custom или других видов - без ограничений
+        const today = new Date().toISOString().split('T')[0];
+        return {
+          minDate: '',
+          maxDate: '',
+          availableDates: []
+        };
+    }
+  };
+
+  const getDefaultDate = (): string => {
+    if (editingTimeSlot) {
+      return editingTimeSlot.date;
+    }
+    
+    switch (currentView) {
+      case ViewType.DAY:
+        return selectedDate.toISOString().split('T')[0];
+      
+      case ViewType.WEEK:
+      case ViewType.MONTH:
+      default:
+        return selectedDate.toISOString().split('T')[0];
+    }
+  };
+
+  const dateConstraints = getDateConstraints();
+  const defaultDate = getDefaultDate();
 
   return (
     <div className="space-y-4">
@@ -107,7 +169,12 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
               setShowForm(false);
               setEditingTimeSlot(null);
             }}
-            defaultDate={editingTimeSlot ? undefined : currentDate}
+            defaultDate={defaultDate}
+            // ПЕРЕДАЕМ ОГРАНИЧЕНИЯ ДАТ
+            minDate={dateConstraints.minDate}
+            maxDate={dateConstraints.maxDate}
+            availableDates={dateConstraints.availableDates}
+            forceDate={currentView === ViewType.DAY}
           />
         </div>
       ) : (
