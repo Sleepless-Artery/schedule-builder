@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin, Calendar } from 'lucide-react';
 import { TimeSlot, Category, Priority } from '../../types';
 import Input from '../ui/Input';
 import Select from '../ui/Select';
@@ -17,16 +17,19 @@ interface TimeSlotFormProps {
   timeSlot?: TimeSlot;
   onSubmit: (timeSlot: Omit<TimeSlot, 'id'>) => void;
   onCancel: () => void;
+  defaultDate?: string; // НОВЫЙ ПРОПС: дата по умолчанию
 }
 
 const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
   timeSlot,
   onSubmit,
   onCancel,
+  defaultDate,
 }) => {
   const [title, setTitle] = useState(timeSlot?.title || '');
   const [startTime, setStartTime] = useState(timeSlot?.startTime || '09:00');
   const [endTime, setEndTime] = useState(timeSlot?.endTime || '10:00');
+  const [date, setDate] = useState(timeSlot?.date || defaultDate || new Date().toISOString().split('T')[0]); // НОВОЕ СОСТОЯНИЕ
   const [category, setCategory] = useState<Category>(
     timeSlot?.category || Category.WORK,
   );
@@ -68,6 +71,10 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
       newErrors.endTime = 'End time is required';
     }
 
+    if (!date) {
+      newErrors.date = 'Date is required';
+    }
+
     if (startTime && endTime) {
       const duration = calculateDuration(startTime, endTime);
       if (duration <= 0) {
@@ -90,6 +97,7 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
       title,
       startTime,
       endTime,
+      date, // ДОБАВЛЕНО ПОЛЕ ДАТЫ
       category,
       description: description.trim() || undefined,
       location: location.trim() || undefined,
@@ -114,6 +122,17 @@ const TimeSlotForm: React.FC<TimeSlotFormProps> = ({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Meeting, Study, Exercise, etc."
             error={errors.title}
+            required
+          />
+
+          {/* НОВОЕ ПОЛЕ: Дата */}
+          <Input
+            type="date"
+            label="Date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            icon={<Calendar className="h-4 w-4 text-gray-500" />}
+            error={errors.date}
             required
           />
 

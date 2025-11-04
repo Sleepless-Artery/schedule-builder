@@ -4,6 +4,8 @@ import {
   differenceInMinutes,
   addMinutes,
   isWithinInterval,
+  parseISO,
+  isSameDay,
 } from 'date-fns';
 import { TimeSlot, ScheduleConflict, TimeGap } from '../types';
 
@@ -53,6 +55,10 @@ export const formatDuration = (minutes: number): string => {
 };
 
 export const doSlotsOverlap = (slotA: TimeSlot, slotB: TimeSlot): boolean => {
+  if (slotA.date !== slotB.date) {
+    return false;
+  }
+
   const today = new Date();
   const startA = parse(slotA.startTime, 'HH:mm', today);
   let endA = parse(slotA.endTime, 'HH:mm', today);
@@ -71,6 +77,8 @@ export const doSlotsOverlap = (slotA: TimeSlot, slotB: TimeSlot): boolean => {
 };
 
 export const calculateOverlap = (slotA: TimeSlot, slotB: TimeSlot): number => {
+  if (slotA.date !== slotB.date) return 0;
+  
   if (!doSlotsOverlap(slotA, slotB)) return 0;
 
   const today = new Date();
@@ -91,23 +99,34 @@ export const calculateOverlap = (slotA: TimeSlot, slotB: TimeSlot): number => {
 export const findConflicts = (timeSlots: TimeSlot[]): ScheduleConflict[] => {
   const conflicts: ScheduleConflict[] = [];
 
-  for (let i = 0; i < timeSlots.length; i++) {
-    for (let j = i + 1; j < timeSlots.length; j++) {
-      const slotA = timeSlots[i];
-      const slotB = timeSlots[j];
+  const slotsByDate: { [date: string]: TimeSlot[] } = {};
+  
+  timeSlots.forEach(slot => {
+    if (!slotsByDate[slot.date]) {
+      slotsByDate[slot.date] = [];
+    }
+    slotsByDate[slot.date].push(slot);
+  });
 
-      const overlapDuration = calculateOverlap(slotA, slotB);
+  Object.values(slotsByDate).forEach(slotsInDay => {
+    for (let i = 0; i < slotsInDay.length; i++) {
+      for (let j = i + 1; j < slotsInDay.length; j++) {
+        const slotA = slotsInDay[i];
+        const slotB = slotsInDay[j];
 
-      if (overlapDuration > 0) {
-        conflicts.push({
-          id: `conflict-${slotA.id}-${slotB.id}`,
-          slotA,
-          slotB,
-          overlapDuration,
-        });
+        const overlapDuration = calculateOverlap(slotA, slotB);
+
+        if (overlapDuration > 0) {
+          conflicts.push({
+            id: `conflict-${slotA.id}-${slotB.id}`,
+            slotA,
+            slotB,
+            overlapDuration,
+          });
+        }
       }
     }
-  }
+  });
 
   return conflicts;
 };
@@ -117,27 +136,43 @@ export const findGaps = (sortedTimeSlots: TimeSlot[]): TimeGap[] => {
 
   if (sortedTimeSlots.length <= 1) return gaps;
 
-  for (let i = 0; i < sortedTimeSlots.length - 1; i++) {
-    const currentEnd = sortedTimeSlots[i].endTime;
-    const nextStart = sortedTimeSlots[i + 1].startTime;
-
-    const gapDuration = calculateDuration(currentEnd, nextStart);
-
-    if (gapDuration > 0) {
-      gaps.push({
-        id: `gap-${i}`,
-        startTime: currentEnd,
-        endTime: nextStart,
-        duration: gapDuration,
-      });
+  const slotsByDate: { [date: string]: TimeSlot[] } = {};
+  
+  sortedTimeSlots.forEach(slot => {
+    if (!slotsByDate[slot.date]) {
+      slotsByDate[slot.date] = [];
     }
-  }
+    slotsByDate[slot.date].push(slot);
+  });
+
+  Object.values(slotsByDate).forEach(slotsInDay => {
+    const sortedDaySlots = sortTimeSlots(slotsInDay);
+    
+    for (let i = 0; i < sortedDaySlots.length - 1; i++) {
+      const currentEnd = sortedDaySlots[i].endTime;
+      const nextStart = sortedDaySlots[i + 1].startTime;
+
+      const gapDuration = calculateDuration(currentEnd, nextStart);
+
+      if (gapDuration > 0) {
+        gaps.push({
+          id: `gap-${sortedDaySlots[i].date}-${i}`,
+          startTime: currentEnd,
+          endTime: nextStart,
+          duration: gapDuration,
+        });
+      }
+    }
+  });
 
   return gaps;
 };
 
 export const sortTimeSlots = (timeSlots: TimeSlot[]): TimeSlot[] => {
   return [...timeSlots].sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date);
+    if (dateComparison !== 0) return dateComparison;
+    
     const today = new Date();
     const startA = parse(a.startTime, 'HH:mm', today);
     const startB = parse(b.startTime, 'HH:mm', today);

@@ -3,6 +3,7 @@ export type TimeSlot = {
   title: string;
   startTime: string;
   endTime: string;
+  date: string;
   category: Category;
   description?: string;
   location?: string;

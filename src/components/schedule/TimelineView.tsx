@@ -15,7 +15,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingTimeSlot, setEditingTimeSlot] = useState<TimeSlot | null>(null);
 
-  const { addTimeSlot, updateTimeSlot, deleteTimeSlot } = useScheduleStore();
+  const { addTimeSlot, updateTimeSlot, deleteTimeSlot, selectedDate } = useScheduleStore();
 
   const handleAddTimeSlot = (newTimeSlot: Omit<TimeSlot, 'id'>) => {
     addTimeSlot(newTimeSlot);
@@ -50,8 +50,13 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
   );
 
   const sortedTimeSlots = [...schedule.timeSlots].sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date);
+    if (dateComparison !== 0) return dateComparison;
+    
     return a.startTime.localeCompare(b.startTime);
   });
+
+  const currentDate = selectedDate.toISOString().split('T')[0];
 
   return (
     <div className="space-y-4">
@@ -102,6 +107,7 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
               setShowForm(false);
               setEditingTimeSlot(null);
             }}
+            defaultDate={editingTimeSlot ? undefined : currentDate}
           />
         </div>
       ) : (
@@ -114,15 +120,40 @@ const TimelineView: React.FC<TimelineViewProps> = ({ schedule, analysis }) => {
               </p>
             </div>
           ) : (
-            sortedTimeSlots.map((timeSlot) => (
-              <TimeSlotCard
-                key={timeSlot.id}
-                timeSlot={timeSlot}
-                hasConflict={conflictingSlotIds.has(timeSlot.id)}
-                onEdit={handleEditTimeSlot}
-                onDelete={handleDeleteTimeSlot}
-              />
-            ))
+            (() => {
+              const slotsByDate: { [date: string]: TimeSlot[] } = {};
+              
+              sortedTimeSlots.forEach(slot => {
+                if (!slotsByDate[slot.date]) {
+                  slotsByDate[slot.date] = [];
+                }
+                slotsByDate[slot.date].push(slot);
+              });
+
+              return Object.entries(slotsByDate).map(([date, slots]) => (
+                <div key={date} className="space-y-3">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-1">
+                    {new Date(date).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </h3>
+                  <div className="space-y-2">
+                    {slots.map((timeSlot) => (
+                      <TimeSlotCard
+                        key={timeSlot.id}
+                        timeSlot={timeSlot}
+                        hasConflict={conflictingSlotIds.has(timeSlot.id)}
+                        onEdit={handleEditTimeSlot}
+                        onDelete={handleDeleteTimeSlot}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()
           )}
         </div>
       )}
