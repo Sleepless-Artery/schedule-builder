@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useScheduleStore } from '../stores/scheduleStore';
-import { ViewType } from '../types';
+import { ViewType, Schedule } from '../types';
 
 import Button from '../components/ui/Button';
 import TimelineView from '../components/schedule/TimelineView';
 import AnalysisPanel from '../components/schedule/AnalysisPanel';
 import ScheduleList from '../components/schedule/ScheduleList';
 import CreateScheduleForm from '../components/schedule/CreateScheduleForm';
+import EditScheduleForm from '../components/schedule/EditScheduleForm';
 
 const Dashboard: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
 
   const {
     schedules,
@@ -20,6 +22,8 @@ const Dashboard: React.FC = () => {
     selectedDate,
     setCurrentSchedule,
     createSchedule,
+    updateSchedule,
+    deleteSchedule,
     analyzeCurrentSchedule,
     setSelectedDate,
   } = useScheduleStore();
@@ -65,6 +69,21 @@ const Dashboard: React.FC = () => {
     setShowCreateForm(false);
   };
 
+  const handleEditSchedule = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+  };
+
+  const handleUpdateSchedule = (name: string) => {
+    if (editingSchedule) {
+      updateSchedule(editingSchedule.id, { name });
+      setEditingSchedule(null);
+    }
+  };
+
+  const handleDeleteSchedule = (id: string) => {
+    deleteSchedule(id);
+  };
+
   const getDateDisplay = () => {
     switch (currentView) {
       case ViewType.DAY:
@@ -99,12 +118,20 @@ const Dashboard: React.FC = () => {
               onSubmit={handleCreateSchedule}
               onCancel={() => setShowCreateForm(false)} 
             />
+          ) : editingSchedule ? (
+            <EditScheduleForm
+              schedule={editingSchedule}
+              onSubmit={handleUpdateSchedule}
+              onCancel={() => setEditingSchedule(null)}
+            />
           ) : (
             <ScheduleList
               schedules={schedules}
               currentScheduleId={currentSchedule?.id || null}
               onSelectSchedule={setCurrentSchedule}
               onCreateClick={() => setShowCreateForm(true)}
+              onEditSchedule={handleEditSchedule}
+              onDeleteSchedule={handleDeleteSchedule}
             />
           )}
 

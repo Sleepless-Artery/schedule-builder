@@ -1,5 +1,5 @@
-import React from 'react';
-import { Calendar, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, Plus, Edit3, Trash2, MoreVertical } from 'lucide-react';
 import { Schedule } from '../../types';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
@@ -9,6 +9,8 @@ interface ScheduleListProps {
   currentScheduleId: string | null;
   onSelectSchedule: (id: string) => void;
   onCreateClick: () => void;
+  onEditSchedule: (schedule: Schedule) => void;
+  onDeleteSchedule: (id: string) => void;
 }
 
 const ScheduleList: React.FC<ScheduleListProps> = ({
@@ -16,7 +18,30 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
   currentScheduleId,
   onSelectSchedule,
   onCreateClick,
+  onEditSchedule,
+  onDeleteSchedule,
 }) => {
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+
+  const handleMenuToggle = (scheduleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(menuOpen === scheduleId ? null : scheduleId);
+  };
+
+  const handleEdit = (schedule: Schedule, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEditSchedule(schedule);
+    setMenuOpen(null);
+  };
+
+  const handleDelete = (scheduleId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this schedule?')) {
+      onDeleteSchedule(scheduleId);
+    }
+    setMenuOpen(null);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -46,7 +71,7 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
             {schedules.map((schedule) => (
               <div
                 key={schedule.id}
-                className={`p-3 rounded-md cursor-pointer transition-colors ${
+                className={`p-3 rounded-md cursor-pointer transition-colors relative group ${
                   schedule.id === currentScheduleId
                     ? 'bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -54,17 +79,48 @@ const ScheduleList: React.FC<ScheduleListProps> = ({
                 onClick={() => onSelectSchedule(schedule.id)}
               >
                 <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 dark:text-white truncate">
                       {schedule.name}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {schedule.timeSlots.length} time slots
                     </p>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(schedule.updatedAt).toLocaleDateString()}
-                  </span>
+                  <div className="flex items-center space-x-2 ml-2">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {new Date(schedule.updatedAt).toLocaleDateString()}
+                    </span>
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => handleMenuToggle(schedule.id, e)}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                      
+                      {menuOpen === schedule.id && (
+                        <div className="absolute right-0 top-8 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[120px]">
+                          <button
+                            className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={(e) => handleEdit(schedule, e)}
+                          >
+                            <Edit3 className="h-4 w-4 mr-2" />
+                            Edit
+                          </button>
+                          <button
+                            className="flex items-center w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            onClick={(e) => handleDelete(schedule.id, e)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
